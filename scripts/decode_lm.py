@@ -1,10 +1,7 @@
-from tqdm import tqdm
-
 import torch
 
 from seq2seq.transformer.transformer import Decoder
 from seq2seq.data.screenplay import tokenizer
-from seq2seq.tokenizer.bpe_tokenizer import BPETokenizer
 
 
 def decode(model, start_tokens=None, max_len=1000, device="cpu", mode="top_p"):
@@ -23,21 +20,27 @@ def decode(model, start_tokens=None, max_len=1000, device="cpu", mode="top_p"):
         next_token_logits = output[0, -1, :]
 
         if mode == "top_k":
-            # top-k
-            indices_to_remove = next_token_logits < torch.topk(next_token_logits, 20)[0][..., -1, None]
-            next_token_logits[indices_to_remove] = -float('inf')
+            indices_to_remove = (
+                next_token_logits < torch.topk(next_token_logits, 20)[0][..., -1, None]
+            )
+            next_token_logits[indices_to_remove] = -float("inf")
 
             next_token_probs = torch.softmax(next_token_logits, dim=-1)
             next_token = torch.multinomial(next_token_probs, num_samples=1).item()
         elif mode == "top_p":
-            # top-p
-            sorted_logits, sorted_indices = torch.sort(next_token_logits, descending=True)
-            cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+            sorted_logits, sorted_indices = torch.sort(
+                next_token_logits, descending=True
+            )
+            cumulative_probs = torch.cumsum(
+                torch.softmax(sorted_logits, dim=-1), dim=-1
+            )
             sorted_indices_to_remove = cumulative_probs > 0.9
-            sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+            sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
+                ..., :-1
+            ].clone()
             sorted_indices_to_remove[..., 0] = 0
             indices_to_remove = sorted_indices[sorted_indices_to_remove]
-            next_token_logits[indices_to_remove] = -float('inf')
+            next_token_logits[indices_to_remove] = -float("inf")
 
             next_token_probs = torch.softmax(next_token_logits, dim=-1)
             next_token = torch.multinomial(next_token_probs, num_samples=1).item()
@@ -109,7 +112,7 @@ def main():
     start_prompt = """ANAKIN"""
     start_tokens = tokenizer.encode(start_prompt).tolist()
     print(start_prompt, sep="", end="")
-    generated_text = decode(
+    _generated_text = decode(
         model, start_tokens=start_tokens, max_len=1000, device=device
     )
     print()

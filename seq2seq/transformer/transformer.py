@@ -57,27 +57,26 @@ class Transformer(nn.Module):
             dropout,
         )
 
-    def make_pad_mask(self, q, k):
-        # k: (B, T_k)
-        # returns: (B, 1, 1, T_k)
+    def make_pad_mask(self, q: torch.Tensor, k: torch.Tensor):
         pad_mask = k.eq(self.pad_idx).unsqueeze(1).unsqueeze(1)
         return pad_mask
 
-    def make_no_peak_mask(self, q, k):
-        # Create a look-ahead mask to prevent attending to future tokens
+    def make_causal_mask(self, q: torch.Tensor, k: torch.Tensor):
         len_q, len_k = q.size(1), k.size(1)
-        mask = torch.triu(torch.ones(len_q, len_k, device=self.device, dtype=torch.bool), diagonal=1)
+        mask = torch.triu(
+            torch.ones(len_q, len_k, device=self.device, dtype=torch.bool), diagonal=1
+        )
         return mask
 
-    def forward(self, src: torch.Tensor, trg: torch.Tensor) -> torch.Tensor:
+    def forward(self, src: torch.Tensor, tgt: torch.Tensor) -> torch.Tensor:
         src_mask = self.make_pad_mask(src, src)
-        src_trg_mask = self.make_pad_mask(trg, src)
-        
-        trg_pad_mask = self.make_pad_mask(trg, trg)
-        trg_no_peak_mask = self.make_no_peak_mask(trg, trg)
-        
-        trg_mask = trg_pad_mask | trg_no_peak_mask
+        src_tgt_mask = self.make_pad_mask(tgt, src)
+
+        tgt_pad_mask = self.make_pad_mask(tgt, tgt)
+        tgt_causal_mask = self.make_causal_mask(tgt, tgt)
+
+        tgt_mask = tgt_pad_mask | tgt_causal_mask
 
         enc_src = self.encoder(src, src_mask)
-        output = self.decoder(trg, enc_src, trg_mask, src_trg_mask)
+        output = self.decoder(tgt, enc_src, tgt_mask, src_tgt_mask)
         return output

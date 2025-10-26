@@ -43,7 +43,7 @@ def decode(model, src_sentence, max_len=100, device="cpu"):
     return tokenizer.decode(torch.tensor(tgt_tokens))
 
 
-def save_checkpoint(epoch: int, model, optimizer, scheduler, latest = True):
+def save_checkpoint(epoch: int, model, optimizer, scheduler, latest=True):
     checkpoint = {
         "epoch": epoch,
         "model": model.state_dict(),
@@ -52,7 +52,7 @@ def save_checkpoint(epoch: int, model, optimizer, scheduler, latest = True):
     }
 
     if latest:
-        torch.save(checkpoint, f"screenplay_lm_gpt_latest.pt")
+        torch.save(checkpoint, "screenplay_lm_gpt_latest.pt")
     else:
         torch.save(checkpoint, f"screenplay_lm_gpt_{epoch}.pt")
 
@@ -89,7 +89,7 @@ def train_lm():
     value_length = 512
     max_length = 5000
     dropout = 0.1
-    epochs = 500
+    epochs = 100
 
     warmup_steps = 4000
     base_lr = 5e-5
@@ -115,14 +115,53 @@ def train_lm():
     ).to(device)
 
     # TODO: loss shouldn't include pad tokens, so it should ignore pad token ids
-    criterion = nn.CrossEntropyLoss(ignore_index= )
+    criterion = nn.CrossEntropyLoss(ignore_index=...)
     optimizer = optim.AdamW(model.parameters(), lr=base_lr, betas=[0.9, 0.98], eps=1e-9)
     scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
 
     # train over all epochs, checkpointing every 25 epochs
     for epoch in range(epochs):
-        raise NotImplementedError("Need to implement training loop")
+        model.train()
+        total_loss = 0
+        data_tqdm = tqdm(dataloader)
+        for i, paragraph in enumerate(data_tqdm):
+            try:
+                paragraph = paragraph.to(device)
 
+                para_input = paragraph[:, :-1]
+                para_output = ...  # TODO: copy/modify the line from train_nmt.py
+
+                optimizer.zero_grad()
+
+                trg_pad_mask = make_pad_mask(para_input, para_input)
+                trg_no_peak_mask = make_no_peak_mask(para_input, para_input)
+
+                trg_mask = trg_pad_mask | trg_no_peak_mask
+
+                output = model(para_input, tgt_mask=trg_mask)
+
+                loss = criterion(
+                    output.reshape(-1, vocab_size), para_output.reshape(-1)
+                )
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+
+                total_loss += loss.item()
+                data_tqdm.set_postfix({"loss": loss})
+                run.log({"loss": loss})
+            except Exception as e:
+                print(e)
+
+            if i % 5000 == 0:
+                print("Saving checkpoint...")
+                save_checkpoint(epoch, model, optimizer, scheduler)
+
+        avg_loss = total_loss / len(dataloader)
+        print(f"Epoch {epoch + 1}: Loss - {avg_loss}")
+
+        if epoch % 25 == 0:
+            save_checkpoint(epoch, model, optimizer, scheduler, latest=False)
 
 
 if __name__ == "__main__":

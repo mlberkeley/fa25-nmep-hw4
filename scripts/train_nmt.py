@@ -73,7 +73,7 @@ def train_nmt():
     value_length = 512
     max_length = 200
     dropout = 0.1
-    epochs = 40
+    epochs = 1
 
     warmup_steps = 4000
     base_lr = 5e-5
@@ -101,13 +101,47 @@ def train_nmt():
     ).to(device)
 
     # TODO: loss shouldn't include pad tokens, so it should ignore pad token ids
-    criterion = nn.CrossEntropyLoss(ignore_index= )
+    criterion = nn.CrossEntropyLoss(ignore_index=...)
     optimizer = optim.AdamW(model.parameters(), lr=base_lr, betas=[0.9, 0.98], eps=1e-9)
     scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
 
-     # train over all epochs, checkpointing every 25 epochs
+    # train over all epochs, checkpointing every 25 epochs
     for epoch in range(epochs):
-        raise NotImplementedError("Need to implement training loop")
+        model.train()
+        total_loss = 0
+        data_tqdm = tqdm(dataloader)
+        for i, (src, tgt) in enumerate(data_tqdm):
+            try:
+                src, tgt = src.to(device), tgt.to(device)
+
+                tgt_input = tgt[:, :-1]
+
+                # TODO: if the input is up to the second-last token,
+                # what should the output be?
+                tgt_output = ...
+
+                optimizer.zero_grad()
+
+                output = model(src, tgt_input)
+
+                loss = criterion(output.reshape(-1, vocab_size), tgt_output.reshape(-1))
+                loss.backward()
+                optimizer.step()
+                scheduler.step()
+
+                total_loss += loss.item()
+                data_tqdm.set_postfix({"loss": loss})
+                run.log({"loss": loss})
+            except Exception as e:
+                print(e)
+                continue
+
+            if i % 1000 == 0:
+                print("Saving checkpoint...")
+                save_checkpoint(epoch, model, optimizer, scheduler)
+
+        avg_loss = total_loss / len(dataloader)
+        print(f"Epoch {epoch + 1}: Loss - {avg_loss}")
 
     model.eval()
     test_sentences = [
