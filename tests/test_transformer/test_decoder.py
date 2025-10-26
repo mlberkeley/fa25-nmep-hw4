@@ -19,7 +19,7 @@ class TestDecoder(unittest.TestCase):
         )
         x = torch.randn(32, 64, 32)
         enc_x = torch.randn(32, 64, 32)
-        mask = torch.ones(32, 8, 64, 64)
+        mask = torch.ones(32, 8, 64, 64).bool()
         Q, _, _ = x, x, x
 
         self.assertEqual(decoder_layer(Q, enc_x, mask).size(), (32, 64, 32))

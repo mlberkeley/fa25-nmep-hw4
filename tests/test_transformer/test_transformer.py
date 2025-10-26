@@ -10,6 +10,7 @@ class TestTransformer(unittest.TestCase):
         """Basic sanity test for the Transformer."""
         torch.manual_seed(42)
         transformer = Transformer(
+            pad_idx=0,
             vocab_size=100,
             num_layers=6,
             num_heads=8,
