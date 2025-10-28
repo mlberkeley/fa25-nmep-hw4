@@ -46,7 +46,7 @@ def decode(model, src_sentence, max_len=100, device="cpu"):
     return tokenizer.decode(torch.tensor(tgt_tokens))
 
 
-def save_checkpoint(epoch: int, model, optimizer, scheduler):
+def save_checkpoint(epoch: int, model, optimizer, scheduler, latest=True):
     checkpoint = {
         "epoch": epoch,
         "model": model.state_dict(),
@@ -54,7 +54,10 @@ def save_checkpoint(epoch: int, model, optimizer, scheduler):
         "scheduler": scheduler.state_dict(),
     }
 
-    torch.save(checkpoint, f"fr_en_euro_{epoch}.pt")
+    if latest:
+        torch.save(checkpoint, "fr_en_euro_latest.pt")
+    else:
+        torch.save(checkpoint, f"fr_en_euro_{epoch}.pt")
 
 
 def train_nmt():
